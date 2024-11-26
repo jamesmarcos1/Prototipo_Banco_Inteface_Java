@@ -1,0 +1,86 @@
+use bancomalvander;
+
+-- Inserindo dados na tabela endereco
+INSERT INTO endereco (id_endereco, cep, local, numero_casa, bairro, cidade, estado) VALUES 
+(1, '71000-000', 'Rua A', 10, 'Bairro A', 'Cidade A', 'DF'),
+(2, '72000-000', 'Rua B', 20, 'Bairro B', 'Cidade B', 'SP'),
+(3, '73000-000', 'Rua C', 30, 'Bairro C', 'Cidade C', 'RJ'),
+(4, '74000-000', 'Rua D', 40, 'Bairro D', 'Cidade D', 'MG'),
+(5, '75000-000', 'Rua E', 50, 'Bairro E', 'Cidade E', 'RS');
+
+
+-- Inserindo dados na tabela usuario
+INSERT INTO usuario (nome, senha, tipo_usuario, data_nascimento, cpf, fk_endereco_id_endereco) VALUES
+('João Silva', 'senha123', 'CLIENTE', '1990-01-01', '11111111111', 1),
+('Maria Oliveira', 'senha123', 'ADMIN', '1985-02-02', '22222222222', 2),
+('Pedro Santos', 'senha123', 'FUNCIONARIO', '1970-03-03', '33333333333', 3),
+('Ana Costa', 'senha123', 'CLIENTE', '1995-04-04', '44444444444', 4),
+('Carlos Lima', 'senha123', 'FUNCIONARIO', '1980-05-05', '55555555555', 5);
+
+-- Inserindo dados na tabela relatorio
+INSERT INTO relatorio (id_relatorio, tipo_relatorio, data_geracao, conteudo) VALUES 
+(1, 'Relatório Mensal', '2024-11-01 09:00:00', 'Conteúdo do relatório mensal.'),
+(2, 'Relatório Semanal', '2024-11-08 09:00:00', 'Conteúdo do relatório semanal.'),
+(3, 'Relatório Diário', '2024-11-15 09:00:00', 'Conteúdo do relatório diário.'),
+(4, 'Relatório Anual', '2024-11-21 09:00:00', 'Conteúdo do relatório anual.'),
+(5, 'Relatório Especial', '2024-11-28 09:00:00', 'Conteúdo do relatório especial.');
+
+-- Inserindo dados na tabela conta (sem fk_transacao_id_transacao)
+INSERT INTO conta (id_conta, numero_conta, agencia, saldo, tipo_conta) VALUES 
+(1, '12345-6', '001', 1000.00, 'CORRENTE'),
+(2, '23456-7', '002', 800.00, 'POUPANCA'),
+(3, '34567-8', '003', 1500.00, 'CORRENTE'),
+(4, '45678-9', '004', 500.00, 'POUPANCA'),
+(5, '56789-0', '005', 2000.00, 'CORRENTE');
+
+-- Inserindo dados na tabela transacao
+INSERT INTO transacao (id_transacao, tipo_transacao, valor, data_hora, fk_conta_id) VALUES 
+(1, 'CREDITO', 1000.00, '2024-11-21 09:30:00', 1),
+(2, 'DEBITO', 200.00, '2024-11-21 10:30:00', 2),
+(3, 'CREDITO', 1500.00, '2024-11-21 11:30:00', 3),
+(4, 'DEBITO', 300.00, '2024-11-21 12:30:00', 4),
+(5, 'CREDITO', 2000.00, '2024-11-21 13:30:00', 5);
+
+-- Atualizando a tabela conta para adicionar fk_transacao_id_transacao
+UPDATE conta SET fk_transacao_id_transacao = 1 WHERE id_conta = 1;
+UPDATE conta SET fk_transacao_id_transacao = 2 WHERE id_conta = 2;
+UPDATE conta SET fk_transacao_id_transacao = 3 WHERE id_conta = 3;
+UPDATE conta SET fk_transacao_id_transacao = 4 WHERE id_conta = 4;
+UPDATE conta SET fk_transacao_id_transacao = 5 WHERE id_conta = 5;
+
+-- Inserindo dados na tabela cliente
+INSERT INTO cliente (id_cliente, fk_usuario_id_usuario, fk_conta_id_conta) VALUES 
+(1, 1, 1),
+(2, 2, 2),
+(3, 4, 4),
+(4, 3, 3),
+(5, 5, 5);
+
+-- Inserindo dados na tabela funcionario
+INSERT INTO funcionario (codigo_funcionario, cargo, fk_usuario_id_usuario, fk_relatorio_id_relatorio) VALUES
+('FUNC001', 'Gerente', 3, 1),
+('FUNC002', 'Supervisor', 5, 2),
+('FUNC003', 'Analista', 3, 3),
+('FUNC004', 'Assistente', 5, 4),
+('FUNC005', 'Coordenador', 3, 5);
+
+-- Inserindo dados na tabela conta_corrente
+INSERT INTO conta_corrente (id_conta_corrente, limite, data_vencimento, fk_conta_id_conta) VALUES 
+(1, 5000.00, '2024-12-31', 1),
+(2, 3000.00, '2024-12-31', 3),
+(3, 7000.00, '2024-12-31', 5),
+(4, 2500.00, '2024-12-31', 4),
+(5, 4500.00, '2024-12-31', 2);
+
+-- Inserindo dados na tabela conta_poupanca
+INSERT INTO conta_poupanca (id_conta_poupanca, taxa_rendimento, fk_conta_id_conta) VALUES 
+(1, 1.5, 2),
+(2, 1.8, 4),
+(3, 2.0, 5),
+(4, 1.3, 1),
+(5, 1.7, 3);
+
+
+
+
+

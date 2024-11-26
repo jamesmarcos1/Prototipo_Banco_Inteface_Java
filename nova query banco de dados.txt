@@ -1,0 +1,182 @@
+-- Drop Database  bancomalvander;
+CREATE DATABASE bancomalvander;
+use bancomalvander;
+
+
+CREATE TABLE auditoria (
+    id_auditoria INT PRIMARY KEY AUTO_INCREMENT,
+    acao VARCHAR(10),  -- Tipo de ação: INSERT, UPDATE ou DELETE
+    tabela VARCHAR(50), -- Nome da tabela onde ocorreu a ação
+    data DATETIME,      -- Data e hora da ação
+    descricao TEXT      -- Descrição da ação realizada
+);
+
+-- Tabela: endereco
+-- Armazena os endereços dos usuários.
+CREATE TABLE endereco (
+    id_endereco INT PRIMARY KEY AUTO_INCREMENT,
+    cep VARCHAR(10),
+    local VARCHAR(100),
+    numero_casa INT,
+    bairro VARCHAR(50),
+    cidade VARCHAR(50),
+    estado VARCHAR(2)
+);
+
+-- Tabela: usuario
+-- Armazena informações dos usuários, incluindo dados de login e endereço.
+CREATE TABLE usuario (
+    id_usuario INT AUTO_INCREMENT PRIMARY KEY, -- AUTO_INCREMENT para gerar IDs automaticamente
+    nome VARCHAR(100),
+    senha VARCHAR(50),
+    tipo_usuario ENUM('ADMIN', 'CLIENTE', 'FUNCIONARIO'),
+    data_nascimento DATE,
+    cpf VARCHAR(11) UNIQUE,
+    fk_endereco_id_endereco INT,
+    FOREIGN KEY (fk_endereco_id_endereco) REFERENCES endereco(id_endereco) ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+-- Tabela: telefone
+-- Armazena os telefones dos usuários.
+CREATE TABLE telefone (
+    id_telefone INT PRIMARY KEY AUTO_INCREMENT,
+    numero VARCHAR(15),
+    fk_usuario_id_usuario INT,
+    FOREIGN KEY (fk_usuario_id_usuario) REFERENCES usuario(id_usuario) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- Tabela: relatorio
+-- Armazena relatórios gerados para os funcionários.
+CREATE TABLE relatorio (
+    id_relatorio INT PRIMARY KEY AUTO_INCREMENT,
+    tipo_relatorio VARCHAR(50),
+    data_geracao DATETIME,
+    conteudo TEXT
+);
+
+-- Tabela: funcionario
+-- Armazena os dados dos funcionários, associando cada um a um usuário e a um relatório.
+CREATE TABLE funcionario (
+    id_funcionario INT AUTO_INCREMENT PRIMARY KEY, -- AUTO_INCREMENT para gerar IDs automaticamente
+    codigo_funcionario VARCHAR(20),
+    cargo VARCHAR(50),
+    fk_usuario_id_usuario INT,
+    fk_relatorio_id_relatorio INT,
+    FOREIGN KEY (fk_usuario_id_usuario) REFERENCES usuario(id_usuario) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- Tabela: transacao
+-- Armazena as transações realizadas, como créditos e débitos.
+CREATE TABLE transacao (
+    id_transacao INT PRIMARY KEY AUTO_INCREMENT,
+    tipo_transacao ENUM('CREDITO', 'DEBITO'),
+    valor DECIMAL(15, 2),
+    data_hora DATETIME,
+    fk_conta_id INT
+);
+
+-- Tabela: conta
+-- Armazena informações das contas dos clientes.
+CREATE TABLE conta (
+    id_conta INT PRIMARY KEY AUTO_INCREMENT,
+    numero_conta VARCHAR(20) UNIQUE,
+    agencia VARCHAR(10),
+    saldo DECIMAL(15, 2),
+    tipo_conta ENUM('CORRENTE', 'POUPANCA'),
+    fk_transacao_id_transacao INT,
+    FOREIGN KEY (fk_transacao_id_transacao) REFERENCES transacao(id_transacao) ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+ALTER TABLE transacao
+ADD CONSTRAINT fk_conta_id FOREIGN KEY (fk_conta_id) REFERENCES conta(id_conta);
+
+-- Tabela: cliente
+-- Armazena dados dos clientes, associando cada cliente a um usuário e a uma conta.
+CREATE TABLE cliente (
+    id_cliente INT PRIMARY KEY AUTO_INCREMENT,
+    fk_usuario_id_usuario INT,
+    fk_conta_id_conta INT,
+    FOREIGN KEY (fk_usuario_id_usuario) REFERENCES usuario(id_usuario) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (fk_conta_id_conta) REFERENCES conta(id_conta) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- Tabela: conta_corrente
+-- Armazena informações adicionais para contas correntes.
+CREATE TABLE conta_corrente (
+    id_conta_corrente INT PRIMARY KEY AUTO_INCREMENT,
+    limite DECIMAL(15, 2),
+    data_vencimento DATE,
+    fk_conta_id_conta INT UNIQUE,
+    FOREIGN KEY (fk_conta_id_conta) REFERENCES conta(id_conta) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- Tabela: conta_poupanca
+-- Armazena informações adicionais para contas poupança.
+CREATE TABLE conta_poupanca (
+    id_conta_poupanca INT PRIMARY KEY AUTO_INCREMENT,
+    taxa_rendimento DECIMAL(5, 2),
+    fk_conta_id_conta INT UNIQUE,
+    FOREIGN KEY (fk_conta_id_conta) REFERENCES conta(id_conta) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- Triggers
+-- As triggers executam operações automáticas para auditoria, consistência de dados e validações.
+
+-- Trigger para auditoria de inserções na tabela usuario
+-- Registra a inserção de um novo usuário na tabela de auditoria.
+CREATE TRIGGER after_insert_usuario
+AFTER INSERT ON usuario
+FOR EACH ROW
+DELIMITER //
+
+-- Trigger para auditoria de inserções na tabela usuario
+CREATE TRIGGER after_insert_usuario
+AFTER INSERT ON usuario
+FOR EACH ROW
+BEGIN
+    INSERT INTO auditoria (acao, tabela, data, descricao)
+    VALUES ('INSERT', 'usuario', NOW(), CONCAT('Novo usuário adicionado: ', NEW.nome));
+END;
+//
+
+-- Trigger para atualizar saldo da conta após uma transação
+CREATE TRIGGER after_insert_transacao
+AFTER INSERT ON transacao
+FOR EACH ROW
+BEGIN
+    IF NEW.tipo_transacao = 'CREDITO' THEN
+        UPDATE conta SET saldo = saldo + NEW.valor WHERE id_conta = NEW.fk_conta_id;
+    ELSEIF NEW.tipo_transacao = 'DEBITO' THEN
+        UPDATE conta SET saldo = saldo - NEW.valor WHERE id_conta = NEW.fk_conta_id;
+    END IF;
+END;
+//
+
+DESCRIBE transacao;
+
+-- Trigger para validar o limite de clientes por conta
+CREATE TRIGGER before_insert_cliente
+BEFORE INSERT ON cliente
+FOR EACH ROW
+BEGIN
+    DECLARE totalClientes INT;
+    SELECT COUNT(*) INTO totalClientes FROM cliente WHERE fk_conta_id_conta = NEW.fk_conta_id_conta;
+    IF totalClientes >= 1 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Uma conta já está associada a um cliente';
+    END IF;
+END;
+//
+
+-- Trigger para auditoria de alteração do limite da conta corrente
+CREATE TRIGGER after_update_conta_corrente
+AFTER UPDATE ON conta_corrente
+FOR EACH ROW
+BEGIN
+    IF OLD.limite <> NEW.limite THEN
+        INSERT INTO auditoria (acao, tabela, data, descricao)
+        VALUES ('UPDATE', 'conta_corrente', NOW(), CONCAT('Limite alterado para conta_corrente id ', NEW.id_conta_corrente, ': de ', OLD.limite, ' para ', NEW.limite));
+    END IF;
+END;
+//
+
+DELIMITER ;
